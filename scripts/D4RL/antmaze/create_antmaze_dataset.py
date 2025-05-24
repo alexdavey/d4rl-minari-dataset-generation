@@ -24,7 +24,7 @@ from tqdm import tqdm
 
 from controller import WaypointController
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../checks")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../checks")))
 from check_maze_dataset import run_maze_checks
 
 R = "r"
@@ -62,6 +62,9 @@ class AntMazeStepDataCallback(StepDataCallback):
         step_data["info"]["qvel"] = obs["observation"][13:]
         step_data["info"]["goal"] = obs["desired_goal"]
 
+        if step_data["info"]["success"]:
+            step_data["truncated"] = True # TODO: Maybe terminated is better?
+
         return step_data
 
 
@@ -71,18 +74,6 @@ def wrap_maze_obs(obs, waypoint_xy):
     observation = np.concatenate([obs["observation"], goal_direction])
     return observation
 
-
-def init_dataset(collector_env, dataset_id, eval_env_spec, expert_policy, args):
-    """Initialise a local Minari dataset."""
-    return collector_env.create_dataset(
-        dataset_id=dataset_id,
-        eval_env=eval_env_spec,
-        expert_policy=expert_policy,
-        algorithm_name=f"{args.maze_solver}+SAC",
-        code_permalink="https://github.com/rodrigodelazcano/d4rl-minari-dataset-generation",
-        author=args.author,
-        author_email=args.author_email,
-    )
 
 EVAL_ENV_MAPS = {"umaze": [[1, 1, 1, 1, 1],
               [1, 0, 0, R, 1],
@@ -108,12 +99,13 @@ EVAL_ENV_MAPS = {"umaze": [[1, 1, 1, 1, 1],
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
                 }
 
-DATASET_ID_TO_ENV_ID = {"D4RL/antmaze/umaze-v2": "AntMaze_UMaze-v4",
-                        "D4RL/antmaze/umaze-diverse-v2": "AntMaze_UMaze-v4",
-                        "D4RL/antmaze/medium-play-v2": "AntMaze_Medium-v4",
-                        "D4RL/antmaze/medium-diverse-v2": "AntMaze_Medium_Diverse_GR-v4",
-                        "D4RL/antmaze/large-diverse-v2": "AntMaze_Large_Diverse_GR-v4",
-                        "D4RL/antmaze/large-play-v2": "AntMaze_Large-v4"}
+DATASET_ID_TO_ENV_ID = {"D4RL/antmaze/medium-play-v2": "AntMaze_Medium-v4"}
+# DATASET_ID_TO_ENV_ID = {"D4RL/antmaze/umaze-v2": "AntMaze_UMaze-v4",
+#                         "D4RL/antmaze/umaze-diverse-v2": "AntMaze_UMaze-v4",
+#                         "D4RL/antmaze/medium-play-v2": "AntMaze_Medium-v4",
+#                         "D4RL/antmaze/medium-diverse-v2": "AntMaze_Medium_Diverse_GR-v4",
+#                         "D4RL/antmaze/large-diverse-v2": "AntMaze_Large_Diverse_GR-v4",
+#                         "D4RL/antmaze/large-play-v2": "AntMaze_Large-v4"}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -196,21 +188,28 @@ if __name__ == "__main__":
             if (step + 1) % args.checkpoint_interval == 0:
                 truncated = True
 
-                if dataset is None:
-                    eval_env_spec = deepcopy(env.spec)
-                    eval_env_spec.kwargs['maze_map'] = EVAL_ENV_MAPS[split_dataset_id[0]]
-                    eval_env = gym.make(eval_env_spec)
-                    eval_waypoint_controller = WaypointController(eval_env.unwrapped.maze, action_callback)
-                    dataset = init_dataset(collector_env, dataset_id, eval_env_spec, eval_waypoint_controller.compute_action, args)
-                    eval_env.close()
-                else:
-                    collector_env.add_to_dataset(dataset)
-
             # Reset the environment, either due to timeout or checkpointing.
             if truncated:
                 seed += 1  # Increment the seed to prevent repeating old episodes
                 seed_everything(seed)
                 obs, info = collector_env.reset(seed=seed)
+
+        # Create Minari dataset
+        eval_env_spec = deepcopy(env.spec)
+        eval_env_spec.kwargs['maze_map'] = EVAL_ENV_MAPS[split_dataset_id[0]]
+        eval_env = gym.make(eval_env_spec)
+        eval_waypoint_controller = WaypointController(eval_env.unwrapped.maze, action_callback)
+        dataset = collector_env.create_dataset(
+            dataset_id=dataset_id,
+            eval_env=eval_env_spec,
+            expert_policy=eval_waypoint_controller.compute_action,
+            algorithm_name=f"{args.maze_solver}+SAC",
+            code_permalink="https://github.com/rodrigodelazcano/d4rl-minari-dataset-generation",
+            author=args.author,
+            author_email=args.author_email,
+        )
+
+        eval_env.close()
 
         print(f"Checking {dataset_id}:")
         assert run_maze_checks(dataset)

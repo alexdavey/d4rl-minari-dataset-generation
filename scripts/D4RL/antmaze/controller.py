@@ -3,7 +3,7 @@ import sys
 import numpy as np
 
 # Import maze_solver from pointmaze
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from pointmaze.maze_solver import DFS, QIteration
 
 
