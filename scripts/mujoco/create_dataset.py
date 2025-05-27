@@ -87,7 +87,7 @@ def load_policy(env_id: str, algo: str, proficiency: str):
 
     model_checkpoint = load_from_hub(
         repo_id=f"farama-minari/{env_id}-v5-{algo.upper()}-{proficiency}",
-        filename=f"{env_id.lower()}-v5-{algo.upper()}-{proficiency}.zip",
+        filename=f"{env_id.lower()}-v5-{algo.lower()}-{proficiency}.zip",
     )
 
     match algo:
