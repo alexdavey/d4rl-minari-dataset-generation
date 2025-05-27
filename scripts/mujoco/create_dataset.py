@@ -100,7 +100,7 @@ def load_policy(env_id: str, algo: str, proficiency: str):
         case "TQC":
             policy = TQC.load(model_checkpoint)
 
-    return policy
+    return lambda x: policy.predict(x)[0]
 
 
 if __name__ == "__main__":
@@ -134,8 +134,8 @@ if __name__ == "__main__":
                 env_id,
                 proficiency,
                 env,
-                lambda x: policy.predict(x)[0],
-                lambda x: expert_policy.predict(x)[0],
+                policy,
+                expert_policy,
                 n_steps,
                 algo,
             )
