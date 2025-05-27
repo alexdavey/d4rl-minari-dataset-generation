@@ -87,7 +87,7 @@ def load_policy(env_id: str, algo: str, proficiency: str):
 
     model_checkpoint = load_from_hub(
         repo_id=f"farama-minari/{env_id}-v5-{algo.upper()}-{proficiency}",
-        filename=f"{env_id.lower()}-v5-{algo.lower()}-{proficiency}.zip",
+        filename=f"{env_id.lower()}-v5-{algo.lower() if algo == 'SAC' else algo.upper()}-{proficiency}.zip",
     )
 
     match algo:
@@ -115,6 +115,9 @@ if __name__ == "__main__":
 
         # make datasets
         for proficiency in proficiencies:
+            if f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}" in minari.list_local_datasets():
+                print(f"\nSkipping {proficiency.upper()} DATASET FOR {env_id}")
+                continue
             print(f"\nCREATING {proficiency.upper()} DATASET FOR {env_id}")
             env = make_env(env_id, render_mode=None, use_monitor_wrapper=False)
             env.spec.kwargs = {}  # overwrite the spec for the dataset since we include the observations with the callback
