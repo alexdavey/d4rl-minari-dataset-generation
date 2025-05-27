@@ -19,20 +19,20 @@ Each tuple contains:
     - (Optional) Observation size (int): The size of the observation space if excluded elements are added via AddExcludedObservationElements callback.
 """
 ENV_IDS = [
-    ("InvertedPendulum", ("medium", "expert"), 100_000, "SAC"),
-    ("InvertedDoublePendulum", ("medium", "expert"), 100_000, "SAC"),
-    ("Reacher", ("medium", "expert"), 500_000, "SAC"),
-    ("Pusher", ("medium", "expert"), 500_000, "SAC"),
-    ("HalfCheetah", ("simple", "medium", "expert"), 1_000_000, "TQC"),
-    ("Hopper", ("simple", "medium", "expert"), 1_000_000, "SAC"),
-    ("Walker2d", ("simple", "medium", "expert"), 1_000_000, "SAC"),
-    ("Swimmer", ("medium", "expert"), 1_000_000, "PPO"),
-    ("Ant", ("simple", "medium"), 1_000_000, "SAC"),
-    ("Humanoid", ("simple", "medium", "expert"), 1_000_000, "TQC"),
-    ("HumanoidStandup", ("simple", "medium", "expert"), 1_000_000, "SAC", 348),
+    ("InvertedPendulum", ("random", "medium", "expert"), 100_000, "SAC"),
+    ("InvertedDoublePendulum", ("random", "medium", "expert"), 100_000, "SAC"),
+    ("Reacher", ("random", "medium", "expert"), 500_000, "SAC"),
+    ("Pusher", ("random", "medium", "expert"), 500_000, "SAC"),
+    ("HalfCheetah", ("random", "simple", "medium", "expert"), 1_000_000, "TQC"),
+    ("Hopper", ("random", "simple", "medium", "expert"), 1_000_000, "SAC"),
+    ("Walker2d", ("random", "simple", "medium", "expert"), 1_000_000, "SAC"),
+    ("Swimmer", ("random", "medium", "expert"), 1_000_000, "PPO"),
+    ("Ant", ("random", "simple", "medium"), 1_000_000, "SAC"),
+    ("Humanoid", ("random", "simple", "medium", "expert"), 1_000_000, "TQC"),
+    ("HumanoidStandup", ("random", "simple", "medium", "expert"), 1_000_000, "SAC", 348),
 ]
 
-DATASET_VERSION = "v0"
+DATASET_VERSION = "v1"
 
 
 class AddExcludedObservationElements(StepDataCallback):
@@ -54,7 +54,7 @@ class AddExcludedObservationElements(StepDataCallback):
         return step_data
 
 
-def create_dataset_from_policy(env_id, proficiency, collector_env, policy, n_steps: int, algorithm_name):
+def create_dataset_from_policy(env_id, proficiency, collector_env, policy, expert_policy, n_steps: int, algorithm_name):
     truncated = True
     terminated = True
     seed = 123
@@ -76,10 +76,15 @@ def create_dataset_from_policy(env_id, proficiency, collector_env, policy, n_ste
         author_email="kallinteris@protonmail.com",
         requirements=["mujoco==3.2.3", "gymnasium>=1.0.0"],
         description=open(f"./descriptions/{env_id}-{proficiency}.md", "r").read(),
+        expert_policy=expert_policy,
     )
 
 
 def load_policy(env_id: str, algo: str, proficiency: str):
+    if proficiency == "random":
+        env = make_env(env_id)
+        return lambda _: env.action_space.sample()
+
     model_checkpoint = load_from_hub(
         repo_id=f"farama-minari/{env_id}-v5-{algo.upper()}-{proficiency}",
         filename=f"{env_id.lower()}-v5-{algo.upper()}-{proficiency}.zip",
@@ -124,11 +129,13 @@ if __name__ == "__main__":
                 env = minari.DataCollector(env, record_infos=False)  # TODO record_info?
 
             policy = load_policy(env_id, algo, proficiency)
+            expert_policy = load_policy(env_id, algo, "expert")
             dataset = create_dataset_from_policy(
                 env_id,
                 proficiency,
                 env,
                 lambda x: policy.predict(x)[0],
+                lambda x: expert_policy.predict(x)[0],
                 n_steps,
                 algo,
             )
