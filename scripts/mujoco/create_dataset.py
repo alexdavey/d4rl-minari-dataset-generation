@@ -2,6 +2,7 @@ import gymnasium as gym
 import minari
 import numpy as np
 from huggingface_sb3 import load_from_hub
+from huggingface_hub.utils import EntryNotFoundError
 from minari import StepDataCallback
 from sb3_contrib import ARS, TQC, TRPO
 from stable_baselines3 import PPO, SAC, TD3
@@ -85,10 +86,15 @@ def load_policy(env_id: str, algo: str, proficiency: str):
         env = make_env(env_id)
         return lambda _: env.action_space.sample()
 
-    model_checkpoint = load_from_hub(
-        repo_id=f"farama-minari/{env_id}-v5-{algo.upper()}-{proficiency}",
-        filename=f"{env_id.lower()}-v5-{algo.lower() if algo == 'SAC' else algo.upper()}-{proficiency}.zip",
-    )
+    repo_id = f"farama-minari/{env_id}-v5-{algo.upper()}-{proficiency}"
+    filename_upper = f"{env_id.lower()}-v5-{algo.upper()}-{proficiency}.zip"
+    filename_lower = f"{env_id.lower()}-v5-{algo.lower()}-{proficiency}.zip"
+
+    # Some models use uppercase convension, some lowercase
+    try:
+        model_checkpoint = load_from_hub(repo_id, filename_upper)
+    except EntryNotFoundError:
+        model_checkpoint = load_from_hub(repo_id, filename_lower)
 
     match algo:
         case "SAC":
