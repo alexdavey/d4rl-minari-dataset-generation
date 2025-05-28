@@ -90,11 +90,13 @@ def load_policy(env_id: str, algo: str, proficiency: str):
     filename_upper = f"{env_id.lower()}-v5-{algo.upper()}-{proficiency}.zip"
     filename_lower = f"{env_id.lower()}-v5-{algo.lower()}-{proficiency}.zip"
 
-    # Some models use uppercase convension, some lowercase
+    # Some models use uppercase convention, some lowercase
     try:
         model_checkpoint = load_from_hub(repo_id, filename_upper)
     except EntryNotFoundError:
         model_checkpoint = load_from_hub(repo_id, filename_lower)
+
+    print("LOADING", filename_upper)
 
     match algo:
         case "SAC":
