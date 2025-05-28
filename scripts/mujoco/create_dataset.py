@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
         # make datasets
         for proficiency in proficiencies:
-            if env_id == "HumanoidStandup-v5":
+            if env_id == "HumanoidStandup":
                 continue
             if f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}" in minari.list_local_datasets():
                 print(f"\nSkipping {proficiency.upper()} DATASET FOR {env_id}")
