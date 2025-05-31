@@ -62,8 +62,8 @@ def create_dataset_from_policy(
         policy,
         n_steps: int,
         algorithm_name,
-        min_ref_score,
-        max_ref_score
+        ref_min_score,
+        ref_max_score
 ):
     truncated = True
     terminated = True
@@ -87,14 +87,14 @@ def create_dataset_from_policy(
         author_email="kallinteris@protonmail.com",
         requirements=["mujoco==3.2.3", "gymnasium>=1.0.0"],
         description=open(f"./descriptions/{env_id}-{proficiency}.md", "r").read(),
-        ref_min_score=None if is_expert else None,
-        ref_max_score=None if is_expert else None,
+        ref_min_score=None if is_expert else ref_min_score,
+        ref_max_score=None if is_expert else ref_max_score,
         expert_policy=policy if is_expert else None,
     )
     ref_min_score = dataset.storage.metadata["ref_min_score"]
     ref_max_score = dataset.storage.metadata["ref_max_score"]
 
-    return dataset, min_ref_score, max_ref_score
+    return dataset, ref_min_score, ref_max_score
 
 
 def load_policy(env_id: str, algo: str, proficiency: str):
@@ -138,8 +138,8 @@ if __name__ == "__main__":
         observation_size = env_run_spec[4] if add_excluded_obs else None
 
         # Populated by expert dataset runs
-        min_ref_score = None
-        max_ref_score = None
+        ref_min_score = None
+        ref_max_score = None
 
         # make datasets
         for proficiency in proficiencies:
@@ -162,13 +162,13 @@ if __name__ == "__main__":
                 env = minari.DataCollector(env, record_infos=False)  # TODO record_info?
 
             policy = load_policy(env_id, algo, proficiency)
-            dataset, min_ref_score, max_ref_score = create_dataset_from_policy(
+            dataset, ref_min_score, ref_max_score = create_dataset_from_policy(
                 env_id,
                 proficiency,
                 env,
                 policy,
                 n_steps,
                 algo,
-                min_ref_score,
-                max_ref_score,
+                ref_min_score,
+                ref_max_score,
             )
