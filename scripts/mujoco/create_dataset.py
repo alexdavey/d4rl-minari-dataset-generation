@@ -137,7 +137,7 @@ def find_nth_step(dataset, n):
 
 
 # TODO: Work out appropriate proportion!
-def mix_datasets(dataset_1, dataset_2, new_dataset_id, seed, proportion=0.5):
+def mix_datasets(dataset_1, dataset_2, new_dataset_id, proportion=0.5):
     # Split proportionally by number of steps rather than number of episodes (minari.split_dataset)
     total_steps = dataset_1.total_steps + dataset_2.total_steps
     split_step = floor(proportion * total_steps)
@@ -173,11 +173,8 @@ if __name__ == "__main__":
             if proficiency == "medium-expert":
                 expert_dataset = minari.load_dataset(f"mujoco/{env_id.lower()}/expert-{DATASET_VERSION}")
                 medium_dataset = minari.load_dataset(f"mujoco/{env_id.lower()}/medium-{DATASET_VERSION}")
-                mix_datasets(
-                    dataset_1=medium_dataset,
-                    dataset_2=expert_dataset,
-                    new_dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}",
-                )
+                new_dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}"
+                minari.combine_datasets([medium_dataset, expert_dataset], new_dataset_id)
             else:
                 print(f"\nCREATING {proficiency.upper()} DATASET FOR {env_id}")
                 env = make_env(env_id, render_mode=None, use_monitor_wrapper=False)
