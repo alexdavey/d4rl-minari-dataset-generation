@@ -21,7 +21,7 @@ import argparse
 from stable_baselines3 import SAC
 from controller import WaypointController
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../checks")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../checks")))
 from check_maze_dataset import run_maze_checks
 
 R = "r"
@@ -44,14 +44,14 @@ class AntMazeStepDataCallback(StepDataCallback):
         step_data = super().__call__(env, obs, info, action, rew, terminated, truncated)
 
         # Filter out info keys that we don't want to store
-        step_data["infos"] = {k: step_data["infos"][k] for k in INFO_KEYS}
+        step_data["info"] = {k: step_data["info"][k] for k in INFO_KEYS}
 
         # To restore the MuJoCo simulation state, we need to store qpos and qvel
-        step_data["infos"]["qpos"] = np.concatenate(
+        step_data["info"]["qpos"] = np.concatenate(
             [obs["achieved_goal"], obs["observation"][:13]]
         )
-        step_data["infos"]["qvel"] = obs["observation"][13:]
-        step_data["infos"]["goal"] = obs["desired_goal"]
+        step_data["info"]["qvel"] = obs["observation"][13:]
+        step_data["info"]["goal"] = obs["desired_goal"]
 
         return step_data
 

@@ -20,20 +20,20 @@ Each tuple contains:
     - (Optional) Observation size (int): The size of the observation space if excluded elements are added via AddExcludedObservationElements callback.
 """
 ENV_IDS = [
-    ("InvertedPendulum", ("random", "medium", "expert"), 100_000, "SAC"),
-    ("InvertedDoublePendulum", ("random", "medium", "expert"), 100_000, "SAC"),
-    ("Reacher", ("random", "medium", "expert"), 500_000, "SAC"),
-    ("Pusher", ("random", "medium", "expert"), 500_000, "SAC"),
-    ("HalfCheetah", ("random", "simple", "medium", "expert"), 1_000_000, "TQC"),
-    ("Hopper", ("random", "simple", "medium", "expert"), 1_000_000, "SAC"),
-    ("Walker2d", ("random", "simple", "medium", "expert"), 1_000_000, "SAC"),
-    ("Swimmer", ("random", "medium", "expert"), 1_000_000, "PPO"),
-    ("Ant", ("random", "simple", "medium"), 1_000_000, "SAC"),
-    ("Humanoid", ("random", "simple", "medium", "expert"), 1_000_000, "TQC"),
-    ("HumanoidStandup", ("random", "simple", "medium", "expert"), 1_000_000, "SAC", 348),
+    ("InvertedPendulum", ("expert", "random", "medium"), 100_000, "SAC"),
+    ("InvertedDoublePendulum", ("expert", "random", "medium"), 100_000, "SAC"),
+    ("Reacher", ("expert", "random", "medium"), 500_000, "SAC"),
+    ("Pusher", ("expert", "random", "medium"), 500_000, "SAC"),
+    ("HalfCheetah", ("expert", "random", "simple", "medium"), 1_000_000, "TQC"),
+    ("Hopper", ("expert", "random", "simple", "medium"), 1_000_000, "SAC"),
+    ("Walker2d", ("expert", "random", "simple", "medium"), 1_000_000, "SAC"),
+    ("Swimmer", ("expert", "random", "medium"), 1_000_000, "PPO"),
+    ("Ant", ("expert", "random", "simple", "medium"), 1_000_000, "SAC"),
+    ("Humanoid", ("expert", "random", "simple", "medium"), 1_000_000, "TQC"),
+    ("HumanoidStandup", ("expert", "random", "simple", "medium"), 1_000_000, "SAC", 348),
 ]
 
-DATASET_VERSION = "v1"
+DATASET_VERSION = "v2"
 
 
 class AddExcludedObservationElements(StepDataCallback):
@@ -55,7 +55,16 @@ class AddExcludedObservationElements(StepDataCallback):
         return step_data
 
 
-def create_dataset_from_policy(env_id, proficiency, collector_env, policy, expert_policy, n_steps: int, algorithm_name):
+def create_dataset_from_policy(
+        env_id,
+        proficiency,
+        collector_env,
+        policy,
+        n_steps: int,
+        algorithm_name,
+        min_ref_score,
+        max_ref_score
+):
     truncated = True
     terminated = True
     seed = 123
@@ -69,16 +78,23 @@ def create_dataset_from_policy(env_id, proficiency, collector_env, policy, exper
         action = policy(obs)
         obs, _, terminated, truncated, _ = env.step(action)
 
-    return collector_env.create_dataset(
-        dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}",
-        algorithm_name=f"SB3/{algorithm_name}",
-        code_permalink="https://github.com/Farama-Foundation/minari-dataset-generation-scripts",
-        author="Kallinteris Andreas",
+    is_expert = (proficiency == "expert")
+    dataset = collector_env.create_dataset(
+        dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{dataset_version}",
+        algorithm_name=f"sb3/{algorithm_name}",
+        code_permalink="https://github.com/farama-foundation/minari-dataset-generation-scripts",
+        author="kallinteris andreas",
         author_email="kallinteris@protonmail.com",
         requirements=["mujoco==3.2.3", "gymnasium>=1.0.0"],
         description=open(f"./descriptions/{env_id}-{proficiency}.md", "r").read(),
-        expert_policy=expert_policy,
+        ref_min_score=None if is_expert else None,
+        ref_max_score=None if is_expert else None,
+        expert_policy=policy if is_expert else None,
     )
+    ref_min_score = dataset.storage.metadata["ref_min_score"]
+    ref_max_score = dataset.storage.metadata["ref_max_score"]
+
+    return dataset, min_ref_score, max_ref_score
 
 
 def load_policy(env_id: str, algo: str, proficiency: str):
@@ -121,6 +137,10 @@ if __name__ == "__main__":
         add_excluded_obs = len(env_run_spec) == 5
         observation_size = env_run_spec[4] if add_excluded_obs else None
 
+        # Populated by expert dataset runs
+        min_ref_score = None
+        max_ref_score = None
+
         # make datasets
         for proficiency in proficiencies:
             if env_id == "HumanoidStandup":
@@ -142,13 +162,13 @@ if __name__ == "__main__":
                 env = minari.DataCollector(env, record_infos=False)  # TODO record_info?
 
             policy = load_policy(env_id, algo, proficiency)
-            expert_policy = load_policy(env_id, algo, "expert")
-            dataset = create_dataset_from_policy(
+            dataset, min_ref_score, max_ref_score = create_dataset_from_policy(
                 env_id,
                 proficiency,
                 env,
                 policy,
-                expert_policy,
                 n_steps,
                 algo,
+                min_ref_score,
+                max_ref_score,
             )
