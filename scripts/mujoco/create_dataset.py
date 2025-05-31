@@ -80,7 +80,7 @@ def create_dataset_from_policy(
 
     is_expert = (proficiency == "expert")
     dataset = collector_env.create_dataset(
-        dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{dataset_version}",
+        dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}",
         algorithm_name=f"sb3/{algorithm_name}",
         code_permalink="https://github.com/farama-foundation/minari-dataset-generation-scripts",
         author="kallinteris andreas",
