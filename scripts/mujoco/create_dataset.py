@@ -99,8 +99,6 @@ def create_dataset_from_policy(
 
 
 def load_policy(env_id: str, algo: str, proficiency: str):
-    if env_id == "HumanoidStandup":
-        continue
     if proficiency == "random":
         env = make_env(env_id)
         return lambda _: env.action_space.sample()
