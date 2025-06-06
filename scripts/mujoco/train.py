@@ -15,33 +15,6 @@ from make_env import make_env
 # TODO make eval deterministic
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--algo", type=str)
-parser.add_argument("--env_id", type=str)
-parser.add_argument("--timesteps", type=int)
-parser.add_argument("--proficiency", type=str)
-parser.add_argument("--policy", type=str, default="MlpPolicy")
-args = parser.parse_args()
-
-# NOTE: different timesteps are used for different environments/proficiencies, check `config.yaml` for indivigual values
-
-ALGORITHM = args.algo.lower()
-PROFICIENCY = args.proficiency
-SB3_POLICY = args.policy
-# assert PROFICIENCY in ["simple", "medium", "expert"]
-TIMESTEPS = args.timesteps
-EVAL_ENVS = 50
-EVAL_FREQ = 1000
-RUNS = 1
-
-# ENV_LIST = ["HalfCheetah", "Ant", "Hopper", "Walker2d", "InvertedPendulum", "InvertedDoublePendulum", "Reacher", "Pusher", "Swimmer", "Humanoid", "HumanoidStandup"]
-ENV_LIST = [
-    args.env_id,
-]
-
-print(f"Training {ENV_LIST}/{PROFICIENCY} - {ALGORITHM}/{TIMESTEPS}")
-
-
 def gen_gamma(env_id: str) -> float:
     if env_id == "Swimmer":
         return 1.0
@@ -126,6 +99,33 @@ def initialize_model(algo_name: str, policy: str):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--algo", type=str)
+    parser.add_argument("--env_id", type=str)
+    parser.add_argument("--timesteps", type=int)
+    parser.add_argument("--proficiency", type=str)
+    parser.add_argument("--policy", type=str, default="MlpPolicy")
+    args = parser.parse_args()
+
+    # NOTE: different timesteps are used for different environments/proficiencies, check `config.yaml` for indivigual values
+
+    ALGORITHM = args.algo.lower()
+    PROFICIENCY = args.proficiency
+    SB3_POLICY = args.policy
+    # assert PROFICIENCY in ["simple", "medium", "expert"]
+    TIMESTEPS = args.timesteps
+    EVAL_ENVS = 50
+    EVAL_FREQ = 1000
+    RUNS = 1
+
+    # ENV_LIST = ["HalfCheetah", "Ant", "Hopper", "Walker2d", "InvertedPendulum", "InvertedDoublePendulum", "Reacher", "Pusher", "Swimmer", "Humanoid", "HumanoidStandup"]
+    ENV_LIST = [
+        args.env_id,
+    ]
+
+    print(f"Training {ENV_LIST}/{PROFICIENCY} - {ALGORITHM}/{TIMESTEPS}")
+
+
     for env_id in ENV_LIST:
         for seed in range(RUNS):
             run_name = f"{env_id}-{ALGORITHM.upper()}-{seed}"
