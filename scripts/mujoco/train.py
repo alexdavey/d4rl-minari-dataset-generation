@@ -1,6 +1,7 @@
 import argparse
 import copy
 
+import minari
 from sb3_contrib import ARS, TQC, TRPO
 from stable_baselines3 import PPO, SAC, TD3, HerReplayBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
@@ -10,6 +11,7 @@ from wandb.integration.sb3 import WandbCallback
 
 import wandb
 from make_env import make_env
+from create_dataset import load_policy
 
 # TODO make eval deterministic
 
@@ -122,6 +124,30 @@ def initialize_model(algo_name: str, policy: str):
             ),
         )
     return model
+
+
+def create_replay_dataset(env_id, proficiency, min_refscore, max_ref_score):
+    # Note: We train without parallel environments for replay datasets
+    run_name = f"{env_id}-{ALGORITHM.upper()}-{seed}"
+    expert_policy = load_policy(env_id, algo, "expert")
+
+    # TODO: Add exclude obs
+    env = minari.DataCollector(env, record_infos=False)  # TODO record_info?
+    env = make_vec_env(make_env, n_envs=n_envs, env_kwargs={"env_id": env_id, "run_name": run_name})
+
+    model = initialize_model(ALGORITHM, SB3_POLICY)
+    model.learn(total_timesteps=TIMESTEPS, log_interval=2)
+
+    dataset = env.create_dataset(
+        dataset_id=f"mujoco/{env_id.lower()}/{proficiency}-{DATASET_VERSION}",
+        algorithm_name=f"sb3/{algorithm_name}",
+        code_permalink="https://github.com/farama-foundation/minari-dataset-generation-scripts",
+        author="kallinteris andreas",
+        author_email="kallinteris@protonmail.com",
+        requirements=["mujoco==3.2.3", "gymnasium>=1.0.0"],
+        description=open(f"./descriptions/{env_id}-{proficiency}.md", "r").read(),
+        expert_policy=expert_policy,
+    )
 
 
 if __name__ == "__main__":
